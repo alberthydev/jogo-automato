@@ -16,7 +16,19 @@
 
 <main>
   <section class="jogo" aria-label="Jogo">
+    <div class="hud">
+      <label>Fase
+        <select id="fase">
+          <option value="1">1 · Floresta (2 chaves)</option>
+          <option value="2">2 · Cripta (3 chaves)</option>
+        </select>
+      </label>
+      <span>Mochila <b id="mochila">vazia</b></span>
+      <span>Passos <b id="passos">0</b></span>
+      <button id="btSom" class="sec" aria-pressed="false">🔇 Som</button>
+    </div>
     <div id="mapa" role="img" aria-label="Mapa da aventura"></div>
+    <p id="narrador" class="narrador" aria-live="polite"></p>
     <ul class="legenda">
       <li>⭐ <b>*</b> estrela</li><li>🗝️ <b>a</b> chave</li><li>🚪 <b>s</b> abrir passagem</li>
       <li>🔒 <b>b</b> usar chave</li><li>🌀 <b>c</b> portal</li><li>🏆 baú (objetivo)</li>

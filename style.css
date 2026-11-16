@@ -69,3 +69,13 @@ figcaption{font-size:.85rem;color:#667}
 
 @media(max-width:820px){main,.duas{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.hud{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .9rem;margin-bottom:.6rem;font-size:.95rem}
+.hud select{font:inherit;padding:.2rem .4rem;border:2px solid #b8c2d1;border-radius:8px;background:#fff}
+.hud b{font-weight:800}
+.hud button{padding:.2rem .7rem;margin-left:auto}
+.narrador{min-height:3.2rem;margin:.8rem 0 0;padding:.5rem .8rem;background:#fff;border-left:6px solid var(--ouro);border-radius:8px}
+.cel.heroi{transition:box-shadow .15s}
+#mapa.balanca{animation:balanca .4s}
+#mapa.vitoria{box-shadow:0 0 0 4px var(--ouro),0 0 28px 6px var(--ouro)}
+@keyframes balanca{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}

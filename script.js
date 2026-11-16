@@ -1,36 +1,43 @@
-/* ===== Definição do PDA =====
-   push é escrito com o topo primeiro: pop S, push "KS" deixa K no topo e S embaixo.
-   'λ' = não lê símbolo da entrada. */
 const REGRAS = [
-  { from: 'q0', read: '*', pop: 'Z', to: 'q1', push: 'SZ' }, // coleta a estrela
-  { from: 'q1', read: 'a', pop: 'S', to: 'q2', push: 'KS' }, // primeira chave
-  { from: 'q2', read: 'a', pop: 'K', to: 'q2', push: 'KK' }, // mais chaves
-  { from: 'q2', read: 's', pop: 'K', to: 'q3', push: 'K'  }, // abre passagem (exige chave)
-  { from: 'q3', read: 'b', pop: 'K', to: 'q3', push: ''   }, // usa uma chave
-  { from: 'q3', read: 'c', pop: 'S', to: 'q4', push: 'S'  }, // portal (só sem chaves)
-  { from: 'q4', read: 'λ', pop: 'S', to: 'q5', push: ''   }, // baú
+  { from: 'q0', read: '*', pop: 'Z', to: 'q1', push: 'SZ' },
+  { from: 'q1', read: 'a', pop: 'S', to: 'q2', push: 'KS' },
+  { from: 'q2', read: 'a', pop: 'K', to: 'q2', push: 'KK' },
+  { from: 'q2', read: 's', pop: 'K', to: 'q3', push: 'K'  },
+  { from: 'q3', read: 'b', pop: 'K', to: 'q3', push: ''   },
+  { from: 'q3', read: 'c', pop: 'S', to: 'q4', push: 'S'  },
+  { from: 'q4', read: 'λ', pop: 'S', to: 'q5', push: ''   },
 ];
 const FINAL = 'q5';
 const NOME_ESTADO = { q0: 'início', q1: 'estrela coletada', q2: 'coletando chaves', q3: 'passagem aberta', q4: 'portal', q5: 'baú (final)' };
 const NOME_PILHA = { Z: 'fundo', S: 'estrela', K: 'chave' };
 const SIMBOLOS = '*asbc';
 
-/* ===== Mapa ===== */
-const MAPA = [
-  '##########',
-  '#@.*.a.a.#',
-  '#b######.#',
-  '#.######s#',
-  '#.######.#',
-  '#Bc.b.b..#',
-  '##########',
-];
+const MAPAS = {
+  1: [
+    '##########',
+    '#@.*.a.a.#',
+    '#b######.#',
+    '#.######s#',
+    '#.######.#',
+    '#Bc.b.b..#',
+    '##########',
+  ],
+  2: [
+    '##########',
+    '#@*a.a.a.#',
+    '#c######.#',
+    '#.######s#',
+    '#.######.#',
+    '#Bcb.b.b.#',
+    '##########',
+  ],
+};
+let MAPA = MAPAS[1];
 const ICONE = { '*': '⭐', a: '🗝️', b: '🔒', s: '🚪', c: '🌀', B: '🏆' };
 
 let st, roteiro, idx, grid, px, py, timer;
 const $ = id => document.getElementById(id);
 
-/* ===== Motor ===== */
 function log(t) { $('log').insertAdjacentHTML('afterbegin', `<li>${t}</li>`); }
 
 function apply(sym) {
@@ -56,24 +63,29 @@ function consume(sym) {
 
 function finish() {
   st.sym = 'λ';
-  while (apply('λ')) { /* fecha as transições λ */ }
+  while (apply('λ')) {}
   if (st.q === FINAL) { st.status = 'acc'; st.msg = 'Chegou ao baú com a entrada toda consumida.'; }
   else { st.status = 'rej'; st.msg = `Parou em ${st.q}, que não é estado final.`; }
   log(st.status === 'acc' ? '✔ ACEITA' : `✖ ${st.msg}`);
 }
 
-/* ===== Modo roteiro ===== */
 function carregar(texto) {
   reset();
   roteiro = [...texto].filter(c => SIMBOLOS.includes(c));
   render();
 }
 
-function passo() {
-  if (!st || st.status !== 'run') return;
+async function passo() {
+  if (!st || st.status !== 'run' || ocupado) return;
   if (idx === 0 && st.n === 0 && roteiro.length === 0) carregar($('entrada').value);
   if (st.status !== 'run') return;
-  if (idx < roteiro.length) consume(roteiro[idx++]); else finish();
+  const g = ger, fim = idx >= roteiro.length;
+  ocupado = true;
+  const alvo = await caminhar(fim ? 'B' : roteiro[idx]);
+  if (g !== ger) return;
+  if (fim) { finish(); if (alvo && st.status === 'acc') { px = alvo.x; py = alvo.y; } }
+  else { consume(roteiro[idx++]); if (alvo && st.status === 'run') { grid[alvo.y][alvo.x] = '.'; px = alvo.x; py = alvo.y; } }
+  ocupado = false;
   render();
 }
 
@@ -83,7 +95,6 @@ function executar() {
   timer = setInterval(() => { passo(); if (st.status !== 'run') clearInterval(timer); }, 600);
 }
 
-/* ===== Modo jogo (WASD) ===== */
 function mover(dx, dy) {
   if (st.status !== 'run') return;
   const nx = px + dx, ny = py + dy, c = grid[ny] && grid[ny][nx];
@@ -109,7 +120,6 @@ document.addEventListener('keydown', e => {
   mover(m[0], m[1]);
 });
 
-/* ===== Interface ===== */
 function reset() {
   clearInterval(timer);
   st = { q: 'q0', stack: ['Z'], status: 'run', msg: '', sym: '–', last: -1, n: 0 };
@@ -140,6 +150,9 @@ function render() {
   $('roteiro').innerHTML = roteiro
     .map((s, i) => `<span class="${i < idx ? 'lido' : ''}${i === idx ? ' prox' : ''}">${s}</span>`).join('') || '<em>vazio</em>';
   document.querySelectorAll('#regras tr[data-i]').forEach(tr => tr.classList.toggle('ativa', +tr.dataset.i === st.last));
+  const itens = (st.stack.includes('S') ? '⭐' : '') + '🗝️'.repeat(st.stack.filter(s => s === 'K').length);
+  $('mochila').textContent = itens || 'vazia';
+  $('passos').textContent = st.n;
 }
 
 function montarRegras() {
@@ -153,6 +166,81 @@ $('btReset').onclick = reset;
 document.querySelectorAll('.exemplos button').forEach(b => b.onclick = () => {
   $('entrada').value = b.dataset.s; carregar(b.dataset.s); executar();
 });
+
+let ger = 0, ocupado = false, som = false, ac;
+
+const HISTORIA = {
+  '*': 'A estrela mágica brilha na mochila e acende as runas do castelo. (empilhou S)',
+  a: 'Uma chave! Ela vai para o topo da pilha. (empilhou K)',
+  s: 'A passagem range e cede: só abriu porque há uma chave no topo.',
+  b: 'Uma chave gasta, uma tranca a menos. (desempilhou K)',
+  c: 'O portal aceita você: não sobrou nenhuma chave na pilha.',
+  'λ': 'O baú se abre! Aventura concluída.',
+};
+const INICIO = 'Pegue a estrela, junte chaves, abra a passagem e gaste cada chave antes do portal.';
+const NOTAS = { '*': 660, a: 523, s: 392, b: 440, c: 784, erro: 140 };
+
+function narra(t) { $('narrador').textContent = t; }
+
+function tocar(k) {
+  if (!som) return;
+  const seq = k === 'vitoria' ? [523, 659, 784, 1047] : [NOTAS[k] || 400];
+  seq.forEach((f, i) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = k === 'erro' ? 'sawtooth' : 'triangle'; o.frequency.value = f; g.gain.value = 0.08;
+    o.connect(g); g.connect(ac.destination);
+    const t = ac.currentTime + i * 0.12; o.start(t); o.stop(t + 0.11);
+  });
+}
+
+function evento(s) {
+  const m = $('mapa'), rej = st.status === 'rej', acc = st.status === 'acc';
+  narra(rej ? 'Bloqueado: ' + st.msg : HISTORIA[s] || '');
+  tocar(rej ? 'erro' : acc ? 'vitoria' : s);
+  m.classList.toggle('vitoria', acc);
+  if (rej) { m.classList.remove('balanca'); void m.offsetWidth; m.classList.add('balanca'); }
+}
+
+function achar(ch) {
+  const key = (x, y) => x + ',' + y, prev = { [key(px, py)]: null }, fila = [[px, py]];
+  while (fila.length) {
+    const [x, y] = fila.shift();
+    if (grid[y][x] === ch && (x !== px || y !== py)) {
+      const rota = []; let k = key(x, y);
+      while (k) { const [a, b] = k.split(',').map(Number); rota.unshift({ x: a, y: b }); k = prev[k]; }
+      return rota.slice(1);
+    }
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, k = key(nx, ny);
+      if (grid[ny] && grid[ny][nx] !== undefined && grid[ny][nx] !== '#' && !(k in prev)) { prev[k] = key(x, y); fila.push([nx, ny]); }
+    }
+  }
+  return null;
+}
+
+async function caminhar(ch) {
+  const g = ger, rota = achar(ch);
+  if (!rota || !rota.length) return null;
+  for (const p of rota.slice(0, -1)) {
+    if (g !== ger) return null;
+    px = p.x; py = p.y; render();
+    await new Promise(r => setTimeout(r, 120));
+  }
+  return rota[rota.length - 1];
+}
+
+const _consume = consume, _finish = finish, _reset = reset, _mover = mover;
+consume = function (s) { _consume(s); evento(s); };
+finish = function () { _finish(); evento('λ'); };
+mover = function (dx, dy) { if (!ocupado) _mover(dx, dy); };
+reset = function () { ger++; ocupado = false; _reset(); $('mapa').className = ''; narra(INICIO); };
+
+$('fase').onchange = e => { MAPA = MAPAS[e.target.value]; reset(); };
+$('btSom').onclick = e => {
+  som = !som; ac = ac || new AudioContext();
+  e.currentTarget.setAttribute('aria-pressed', som);
+  e.currentTarget.textContent = som ? '🔊 Som' : '🔇 Som';
+};
 
 montarRegras();
 reset();
