@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aventura com PDA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Aventura com PDA</h1>
+  <p>Ande com <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou digite um roteiro. A pilha decide o que o herói pode fazer.</p>
+</header>
+
+<main>
+  <section class="jogo" aria-label="Jogo">
+    <div id="mapa" role="img" aria-label="Mapa da aventura"></div>
+    <ul class="legenda">
+      <li>⭐ <b>*</b> estrela</li><li>🗝️ <b>a</b> chave</li><li>🚪 <b>s</b> abrir passagem</li>
+      <li>🔒 <b>b</b> usar chave</li><li>🌀 <b>c</b> portal</li><li>🏆 baú (objetivo)</li>
+    </ul>
+  </section>
+
+  <section class="painel" aria-label="Autômato em tempo real">
+    <div id="resultado" class="selo">Em andamento</div>
+    <p id="motivo" aria-live="polite"></p>
+
+    <div class="leitura">
+      <div><span>Estado atual</span><b id="estado">q0</b><small id="estadoNome"></small></div>
+      <div><span>Símbolo lido</span><b id="simbolo">–</b></div>
+    </div>
+
+    <h2>Pilha <small>(topo primeiro)</small></h2>
+    <ol id="pilha" class="pilha"></ol>
+
+    <h2>Roteiro</h2>
+    <div id="roteiro" class="roteiro"></div>
+    <div class="entrada">
+      <input id="entrada" value="*aasbbc" aria-label="Roteiro em letras" autocomplete="off" spellcheck="false">
+      <button id="btPasso">Passo</button>
+      <button id="btRodar">Executar</button>
+      <button id="btReset" class="sec">Reiniciar</button>
+    </div>
+
+    <h2>Exemplos</h2>
+    <div class="exemplos">
+      <button data-s="*asbc">*asbc <i>aceita</i></button>
+      <button data-s="*aasbbc">*aasbbc <i>aceita</i></button>
+      <button data-s="*aasbc">*aasbc <i>rejeita</i></button>
+      <button data-s="*asbbc">*asbbc <i>rejeita</i></button>
+    </div>
+  </section>
+</main>
+
+<section class="regras">
+  <h2>Autômato de pilha</h2>
+  <p>M = ({q0…q5}, {*, a, s, b, c}, {Z, S, K}, δ, q0, Z, {q5}). Aceita por estado final. Linguagem: <b>* aⁿ s bⁿ c</b>, n ≥ 1.</p>
+  <div class="duas">
+    <div class="rolagem"><table id="regras"></table></div>
+    <figure>
+      <img src="diagrama-jflap.png" alt="Diagrama do autômato de pilha feito no JFLAP">
+      <figcaption>Diagrama no JFLAP</figcaption>
+    </figure>
+  </div>
+</section>
+
+<h2 class="so-leitor">Log de passos</h2>
+<section class="logbox"><ol id="log"></ol></section>
+
+<script src="script.js"></script>
+</body>
+</html>
