@@ -1,86 +1,233 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aventura com PDA</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#253b2d">
+  <title>A Última Colheita</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
-<header>
-  <h1>Aventura com PDA</h1>
-  <p>Ande com <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou digite um roteiro. A pilha decide o que o herói pode fazer.</p>
-</header>
-
-<main>
-  <section class="jogo" aria-label="Jogo">
-    <div class="hud">
-      <label>Fase
-        <select id="fase">
-          <option value="1">1 · Floresta (2 chaves)</option>
-          <option value="2">2 · Cripta (3 chaves)</option>
-        </select>
-      </label>
-      <span>Mochila <b id="mochila">vazia</b></span>
-      <span>Passos <b id="passos">0</b></span>
-      <button id="btSom" class="sec" aria-pressed="false">🔇 Som</button>
+<body data-screen="screenMenu" data-mode="play">
+  <main id="screenMenu" class="screen menu-screen active">
+    <div class="menu-card">
+      <p class="eyebrow">UMA AVENTURA SOBRE AUTÔMATOS DE PILHA</p>
+      <h1>A Última Colheita</h1>
+      <p class="menu-lead">Reconstrua a ponte, reative o moinho e descubra se o autômato aceita a sequência <b>aⁿbⁿcᵐdᵐe</b>.</p>
+      <div class="menu-actions">
+        <button id="menuStart" class="button button-primary menu-btn" type="button">Iniciar</button>
+        <button id="menuSettings" class="button button-quiet menu-btn" type="button">Configurações</button>
+        <button id="menuHelp" class="button button-quiet menu-btn" type="button">Como jogar</button>
+      </div>
     </div>
-    <div id="mapa" role="img" aria-label="Mapa da aventura"></div>
-    <p id="narrador" class="narrador" aria-live="polite"></p>
-    <ul class="legenda">
-      <li>⭐ <b>*</b> estrela</li><li>🗝️ <b>a</b> chave</li><li>🚪 <b>s</b> abrir passagem</li>
-      <li>🔒 <b>b</b> usar chave</li><li>🌀 <b>c</b> portal</li><li>🏆 baú (objetivo)</li>
-    </ul>
-  </section>
+    <p class="menu-foot">Projeto acadêmico · Autômatos de Pilha</p>
+  </main>
 
-  <section class="painel" aria-label="Autômato em tempo real">
-    <div id="resultado" class="selo">Em andamento</div>
-    <p id="motivo" aria-live="polite"></p>
-
-    <div class="leitura">
-      <div><span>Estado atual</span><b id="estado">q0</b><small id="estadoNome"></small></div>
-      <div><span>Símbolo lido</span><b id="simbolo">–</b></div>
+  <main id="screenMode" class="screen menu-screen">
+    <div class="menu-card wide">
+      <p class="eyebrow">INICIAR</p>
+      <h2>Como você quer jogar?</h2>
+      <div class="mode-grid">
+        <button id="modePlay" class="mode-card" type="button">
+          <span class="mode-tag">MODO 1</span><h3>Jogar</h3>
+          <p>Controle o personagem, colete as tábuas, reconstrua a ponte e entre no moinho. Cada ação vira um símbolo para o autômato.</p>
+          <span class="mode-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover · <kbd>E</kbd> interagir</span>
+        </button>
+        <button id="modeSequence" class="mode-card" type="button">
+          <span class="mode-tag">MODO 2</span><h3>Enviar sequência</h3>
+          <p>Digite uma sequência de a, b, c, d e e. O personagem a executa no mapa e você vê se o autômato consegue chegar ao final.</p>
+          <span class="mode-keys">exemplo: <code>abcde</code></span>
+        </button>
+      </div>
+      <button class="button button-quiet" data-goto="screenMenu" type="button">← Voltar</button>
     </div>
+  </main>
 
-    <h2>Pilha <small>(topo primeiro)</small></h2>
-    <ol id="pilha" class="pilha"></ol>
-
-    <h2>Roteiro</h2>
-    <div id="roteiro" class="roteiro"></div>
-    <div class="entrada">
-      <input id="entrada" value="*aasbbc" aria-label="Roteiro em letras" autocomplete="off" spellcheck="false">
-      <button id="btPasso">Passo</button>
-      <button id="btRodar">Executar</button>
-      <button id="btReset" class="sec">Reiniciar</button>
+  <main id="screenSettings" class="screen menu-screen">
+    <div class="menu-card wide">
+      <p class="eyebrow">CONFIGURAÇÕES</p>
+      <h2>Ajustes</h2>
+      <div id="settingsList" class="settings-list"></div>
+      <p class="small-copy">As opções são salvas neste navegador. Mais ajustes serão adicionados aqui.</p>
+      <div class="end-actions" style="justify-content:flex-start">
+        <button id="soundTest" class="button button-quiet" type="button">Testar som</button>
+        <button id="settingsReset" class="button button-quiet" type="button">Restaurar padrões</button>
+        <button class="button button-primary" data-goto="screenMenu" type="button">← Voltar</button>
+      </div>
     </div>
+  </main>
 
-    <h2>Exemplos</h2>
-    <div class="exemplos">
-      <button data-s="*asbc">*asbc <i>aceita</i></button>
-      <button data-s="*aasbbc">*aasbbc <i>aceita</i></button>
-      <button data-s="*aasbc">*aasbc <i>rejeita</i></button>
-      <button data-s="*asbbc">*asbbc <i>rejeita</i></button>
-    </div>
-  </section>
-</main>
+  <main id="screenGame" class="app-shell screen">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">UMA AVENTURA SOBRE AUTÔMATOS DE PILHA</p>
+        <h1>A Última Colheita</h1>
+      </div>
+      <div class="top-actions"><button id="helpButton" class="button button-quiet" type="button">Como jogar</button><button id="gameMenuButton" class="button button-quiet" data-goto="screenMenu" type="button">← Menu</button></div>
+    </header>
 
-<section class="regras">
-  <h2>Autômato de pilha</h2>
-  <p>M = ({q0…q5}, {*, a, s, b, c}, {Z, S, K}, δ, q0, Z, {q5}). Aceita por estado final. Linguagem: <b>* aⁿ s bⁿ c</b>, n ≥ 1.</p>
-  <div class="duas">
-    <div class="rolagem"><table id="regras"></table></div>
-    <figure>
-      <img src="diagrama-jflap.png" alt="Diagrama do autômato de pilha feito no JFLAP">
-      <figcaption>Diagrama no JFLAP</figcaption>
-    </figure>
-  </div>
-</section>
+    <section class="game-layout" aria-label="Jogo e painel do autômato">
+      <div class="game-column">
+        <div class="scene-heading">
+          <div><span class="live-dot"></span><span id="areaName">A Fazenda</span></div>
+          <span id="objective">Encontre a carta do seu avô</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="gameCanvas" width="960" height="640" aria-label="Mapa da fazenda visto de cima"></canvas>
+          <div id="introOverlay" class="overlay">
+            <div class="story-card">
+              <p class="eyebrow">CAPÍTULO 1 · O RETORNO</p>
+              <h2>Uma fazenda ainda pode renascer.</h2>
+              <p>Você voltou à propriedade da família depois de receber uma carta do seu avô. O moinho está parado e a ponte foi destruída. Reúna as tábuas, reconstrua a ponte, encontre as chaves do portão e reative o moinho antes que a tempestade chegue.</p>
+              <blockquote>“Uma fazenda nunca morre enquanto alguém estiver disposto a cuidar dela.”</blockquote>
+              <button id="startButton" class="button button-primary" type="button">Começar a aventura</button>
+            </div>
+          </div>
+          <div id="letterOverlay" class="overlay hidden">
+            <div class="story-card letter-card">
+              <p class="eyebrow">A CARTA DO VOVÔ</p>
+              <h2>Querido neto,</h2>
+              <blockquote>“Uma fazenda nunca morre enquanto alguém estiver disposto a cuidar dela. O moinho ainda pode funcionar, mas você precisará reconstruir a passagem que leva até ele. Deixei ferramentas e madeira espalhadas pela propriedade. O portão do moinho está trancado; as chaves estão espalhadas do outro lado do rio. O restante está em suas mãos.”</blockquote>
+              <p><b>Missão:</b> colete tábuas no bosque (<b>a</b>) e use todas na ponte (<b>b</b>); depois colete as chaves na outra margem (<b>c</b>), use todas no portão do moinho (<b>d</b>) e entre (<b>e</b>) antes da tempestade.</p>
+              <button id="letterClose" class="button button-primary" type="button">Guardar a carta (E)</button>
+            </div>
+          </div>
+          <div id="endingOverlay" class="overlay hidden">
+            <div class="story-card ending-card">
+              <p class="eyebrow">CAPÍTULO 3 · A ÚLTIMA COLHEITA</p>
+              <h2>O moinho voltou a girar!</h2>
+              <p>A água voltou a mover as engrenagens. A fazenda está salva — e a memória do seu avô continuará viva em cada nova colheita.</p>
+              <p class="ending-sequence">Sequência reconhecida: <strong id="endingSequence">aabbc</strong></p>
+              <div class="end-actions"><button id="restartButton" class="button button-primary" type="button">Nova partida</button><button id="menuButton" class="button button-quiet" type="button">Voltar ao menu</button></div>
+              <p class="credits">A Última Colheita · projeto acadêmico de Autômatos de Pilha</p>
+            </div>
+          </div>
+        </div>
+        <div class="controls-row">
+          <div class="control-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover</div>
+          <div class="control-hint"><kbd>E</kbd> interagir</div>
+          <div class="control-hint"><kbd>R</kbd> reiniciar</div>
+          <span id="nearbyHint" class="nearby-hint">Explore a fazenda.</span>
+        </div>
+        <div class="inventory-row"><span class="section-label">MOCHILA</span><div id="inventory" class="inventory"></div></div>
+        <div id="messageBox" class="message-box" data-tone="info" aria-live="polite">
+          <span class="message-icon">✦</span>
+          <p id="gameMessage">A carta do seu avô está perto da casa. Aproxime-se e pressione E.</p>
+        </div>
+      </div>
 
-<h2 class="so-leitor">Log de passos</h2>
-<section class="logbox"><ol id="log"></ol></section>
+      <aside class="side-column">
+        <section class="panel pda-panel">
+          <div class="panel-title">
+            <div><p class="eyebrow">MONITOR DO AUTÔMATO</p><h2>Autômato de Pilha</h2></div>
+            <span id="statusBadge" class="status-badge status-idle">Aguardando</span>
+          </div>
+          <div class="state-strip">
+            <div><span>Estado atual</span><strong id="currentState">q0</strong></div>
+            <div><span>Símbolo atual</span><strong id="currentSymbol">—</strong></div>
+          </div>
+          <div class="sequence-block">
+            <div class="section-label"><span>SEQUÊNCIA GERADA (tentativas)</span><span id="inputCount">0 símbolos</span></div>
+            <div id="sequenceView" class="sequence-view" aria-label="Sequência gerada">∅</div>
+            <div id="verdictBox" class="verdict verdict-idle">Sem sequência ainda: cada ação do jogo gera um símbolo.</div>
+          </div>
+          <div class="stack-block">
+            <div class="section-label"><span>PILHA</span><span>topo ↑</span></div>
+            <div id="stackView" class="stack-view"><span class="stack-token base-token">Z</span></div>
+            <p class="stack-explain">B = tábua · K = chave (ainda não usadas) · Z = fundo da pilha</p>
+          </div>
+          <div class="pda-progress">
+            <div class="section-label"><span>FASE DO PROCESSAMENTO</span><span id="phaseLabel">Início</span></div>
+            <div class="phase-track"><i id="phaseFill"></i></div>
+          </div>
+          <p id="pdaExplanation" class="pda-explanation">O estado inicial é q0. O marcador Z representa o fundo da pilha.</p>
+        </section>
 
-<script src="script.js"></script>
+        <section class="panel manual-panel">
+          <div class="panel-title"><div><p class="eyebrow">LABORATÓRIO</p><h2>Testar uma sequência</h2></div></div>
+          <p class="small-copy">Digite símbolos do alfabeto {a, b, c, d, e}. Com a opção abaixo marcada, o personagem executa o roteiro no mapa (a partida atual é reiniciada); desmarcada, só o autômato processa.</p>
+          <form id="manualForm" class="manual-form">
+            <label class="sr-only" for="manualInput">Sequência para testar</label>
+            <input id="manualInput" type="text" autocomplete="off" spellcheck="false" placeholder="Ex.: aabbccdde" maxlength="40">
+            <button class="button button-primary" type="submit">Processar</button>
+          </form>
+          <label class="check-row"><input type="checkbox" id="onScreen" checked> Executar na tela do jogo (o personagem faz o roteiro)</label>
+          <div class="examples">
+            <span class="section-label">EXEMPLOS (clique para processar)</span>
+            <div id="exampleButtons" class="example-buttons"></div>
+          </div>
+          <div class="lab-monitor">
+            <div class="section-label"><span>MONITOR DO TESTE</span><span id="labStatus">parado</span></div>
+            <div class="lab-row"><div><span>Estado</span><strong id="labState">—</strong></div><div><span>Lendo</span><strong id="labSymbol">—</strong></div></div>
+            <div id="labInput" class="lab-input">∅</div>
+            <div class="lab-stackline"><span>Pilha (topo à esquerda)</span><div id="labStack" class="lab-stack"></div></div>
+          </div>
+          <div id="manualResult" class="manual-result" aria-live="polite">O resultado da simulação aparecerá aqui.</div>
+          <ol id="traceList" class="trace-list" aria-label="Histórico de transições"></ol>
+          <button id="suiteButton" class="button button-quiet suite-btn" type="button">Executar suíte completa</button>
+          <div id="suiteTable" class="hidden"><p id="suiteSummary" class="small-copy"></p>
+            <table class="mini-table"><thead><tr><th>Sequência</th><th>Esperado</th><th>Obtido</th><th></th></tr></thead><tbody id="suiteBody"></tbody></table></div>
+        </section>
+
+        <section class="panel legend-panel">
+          <p class="eyebrow">LEGENDA DO PDA</p>
+          <div class="legend-grid">
+            <div><b class="symbol symbol-a">a</b><span>Coletar tábua<br><small>empilha B</small></span></div>
+            <div><b class="symbol symbol-b">b</b><span>Usar na ponte<br><small>desempilha B</small></span></div>
+            <div><b class="symbol symbol-c">c</b><span>Coletar chave<br><small>empilha K</small></span></div>
+            <div><b class="symbol symbol-d">d</b><span>Usar no portão<br><small>desempilha K</small></span></div>
+            <div><b class="symbol symbol-e">e</b><span>Entrar no moinho<br><small>aceita em q7</small></span></div>
+          </div>
+          <p class="language-note">L = { aⁿbⁿcᵐdᵐe | n, m &gt; 0 }</p>
+        </section>
+      </aside>
+    </section>
+
+        <section class="panel diagram-panel">
+      <div class="panel-title"><div><p class="eyebrow">ESPECIFICAÇÃO FORMAL</p><h2>Diagrama de estados e regras de transição</h2></div><a class="button button-quiet" href="docs/ultima-colheita.jff" download>Baixar .jff (JFLAP)</a></div>
+      <div class="diagram-grid">
+        <svg id="pdaDiagram" viewBox="0 0 900 210" role="img" aria-label="Diagrama de estados do PDA"></svg>
+        <figure id="jflapFig" class="jflap-fig hidden">
+          <img alt="Diagrama exportado do JFLAP">
+          <figcaption>Diagrama no JFLAP</figcaption>
+        </figure>
+        <div>
+          <table class="mini-table rules"><thead><tr><th>Origem</th><th>Lê</th><th>Topo</th><th>Destino</th><th>Empilha</th></tr></thead><tbody id="rulesBody"></tbody></table>
+          <p class="small-copy">Estado inicial <b>q0</b> · fundo da pilha <b>Z</b> · final <b>q7</b> · aceitação por estado final · 8 estados. “Empilha” substitui o topo (topo à esquerda, como no JFLAP). O diagrama e a tabela são gerados da própria definição do PDA; o estado atual fica destacado.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="info-card"><span class="info-number">01</span><div><h3>Tábuas e ponte</h3><p>Coletar tábua gera <b>a</b> e empilha <b>B</b>; usar na ponte gera <b>b</b> e desempilha <b>B</b>.</p></div></article>
+      <article class="info-card"><span class="info-number">02</span><div><h3>Chaves e portão</h3><p>Depois da ponte: coletar chave gera <b>c</b> e empilha <b>K</b>; usar no portão gera <b>d</b> e desempilha <b>K</b>.</p></div></article>
+      <article class="info-card"><span class="info-number">03</span><div><h3>O moinho</h3><p>Com o portão aberto e a pilha em <b>Z</b>, entrar no moinho gera <b>e</b> e leva ao estado final.</p></div></article>
+    </section>
+    <footer>Projeto acadêmico · Autômatos de Pilha · A Última Colheita</footer>
+  </main>
+
+  <dialog id="helpDialog" class="help-dialog">
+    <form method="dialog"><button class="dialog-close" aria-label="Fechar">×</button></form>
+    <p class="eyebrow">GUIA RÁPIDO</p><h2>Como jogar</h2>
+    <ol>
+      <li>Use <b>W, A, S, D</b> para caminhar e <b>E</b> para interagir.</li>
+      <li>Leia a carta perto da casa. No bosque, colete as tábuas (<b>a</b>) e use-as na ponte, uma por vez (<b>b</b>).</li>
+      <li>Com a ponte pronta, atravesse, colete as chaves (<b>c</b>) e use-as no portão do moinho (<b>d</b>).</li>
+      <li>Com o portão aberto, entre no moinho (<b>e</b>). A sequência gerada precisa estar em <b>aⁿbⁿcᵐdᵐe</b>.</li>
+      <li>O painel mostra o veredito <b>ACEITA</b> ou <b>REJEITADA</b>. Você também pode digitar um roteiro no laboratório e ver o personagem executá-lo.</li>
+    </ol>
+    <p class="dialog-note">Ações que o autômato nega (ex.: usar madeira sem ter coletado) entram na sequência como tentativas e tornam o veredito REJEITADA. Aperte <b>R</b> para recomeçar.</p>
+    <form method="dialog"><button class="button button-primary">Entendi</button></form>
+  </dialog>
+  <script src="js/dom.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/pda.js"></script>
+  <script src="js/tests.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/lab.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
