@@ -23,11 +23,13 @@ class Game {
 
   resetWorld() {
     this.script = null;
+    this.cooldown = 0;
     this.session.reset(); this.player.reset();
     this.planks = PLANK_SPOTS.map(p => ({ ...p, collected: false }));
     this.keys = KEY_SPOTS.map(p => ({ ...p, collected: false }));
     this.boards = 0; this.usedKeys = 0;        // tábuas na ponte / chaves no portão (espelham os b / d aceitos)
     this.attempts = [];                        // TODAS as ações que geraram símbolo: {ch, ok}
+    this.insideMill = false;
     this.letterRead = false; this.finishT = 0; this.finishStart = 0;
     this.refreshWorld();
     this.sync("A carta do seu avô está perto da casa. Aproxime-se e pressione E.");
@@ -39,7 +41,7 @@ class Game {
     this.bridgeOpen = BRIDGE_STATES.includes(st);
     this.gateOpen = GATE_STATES.includes(st);
   }
-  mapState() { return { bridgeOpen: this.bridgeOpen, gateOpen: this.gateOpen, boards: this.boards }; }
+  mapState() { return { bridgeOpen: this.bridgeOpen, gateOpen: this.gateOpen, boards: this.boards, insideMill: this.insideMill }; }
 
   setMode(mode) { this.mode = mode; }
   activePhase() { return this.mode === "play" ? "playing" : "idle"; }
@@ -47,11 +49,10 @@ class Game {
     this.cancelScript(); this.resetWorld(); this.hooks.letter(false); this.hooks.ending(null);
     this.phase = "idle"; this.sync("Modo sequência: digite uma sequência de a, b, c, d e e no laboratório e clique em Processar.");
   }
-  start() { this.phase = "playing"; this.sync("Você chegou à fazenda. Leia a carta perto da casa (tecla E)."); }
   reset(autostart = false) {
     this.cancelScript(); this.resetWorld(); this.hooks.letter(false); this.hooks.ending(null);
     this.phase = autostart ? this.activePhase() : "menu";
-    if (autostart) this.sync(this.mode === "play" ? "Partida reiniciada. Encontre a carta perto da casa." : "Mundo reiniciado. Digite uma nova sequência.");
+    if (autostart) this.sync(this.mode === "play" ? "Pressione E para ler a carta na caixa de correio." : "Mundo reiniciado. Digite uma nova sequência.");
   }
   backToMenu() { this.reset(false); this.hooks.menu(); }
 
@@ -59,21 +60,26 @@ class Game {
   nearest() {
     const p = this.player, dist = (s) => Math.hypot(p.cx - s.x, p.cy - s.y), cands = [];
     const add = (type, at, range, label, item) => { const d = dist(at); if (d < range) cands.push({ type, at, item, dist: d, label }); };
+    if (this.insideMill) {
+      for (const [type, spot] of [["lever", MILL_LEVER], ["exit", MILL_EXIT]]) add(type, spot, spot.range, spot.label);
+      return cands[0] || null;
+    }
     add("letter", SPOTS.letter, SPOTS.letter.range, SPOTS.letter.label);
     this.planks.forEach(pl => { if (!pl.collected) add("plank", pl, 44, "Tábua de madeira", pl); });
     this.keys.forEach(k => { if (!k.collected) add("key", k, 44, "Chave", k); });
     add("bridge", SPOTS.bridge, SPOTS.bridge.range, SPOTS.bridge.label);
+    add("note", ORCHARD_NOTE, ORCHARD_NOTE.range, ORCHARD_NOTE.label);
     add("gate", SPOTS.gate, SPOTS.gate.range, SPOTS.gate.label);
-    add("mill", SPOTS.mill, SPOTS.mill.range, SPOTS.mill.label);
+    if (this.gateOpen) add("mill", SPOTS.mill, 28, SPOTS.mill.label);
     return cands.sort((a, b) => a.dist - b.dist)[0] || null;
   }
 
   interact() {
+    if (this.phase === "letter") { this.phase = "playing"; this.hooks.letter(false); return; }
+    if (this.phase !== "playing") return;
     const now = performance.now();
     if (now < this.cooldown) return;           // evita repetição acidental
     this.cooldown = now + 220;
-    if (this.phase === "letter") { this.phase = "playing"; this.hooks.letter(false); return; }
-    if (this.phase !== "playing") return;
     const t = this.nearest();
     if (!t) return this.hooks.message("Não há nada para interagir por perto.", "info");
     if (t.type === "letter") {
@@ -85,7 +91,10 @@ class Game {
     else if (t.type === "key") this.collectKey(t.item);
     else if (t.type === "bridge") this.useBridge(false);
     else if (t.type === "gate") this.useGate(false);
+    else if (t.type === "note") this.hooks.message("Recado do avô: deixei uma chave junto à entrada. Siga as trilhas entre as macieiras se quiser procurar as outras.", "info");
     else if (t.type === "mill") this.enterMill();
+    else if (t.type === "exit") this.leaveMill();
+    else if (t.type === "lever") this.pullLever();
   }
 
   /** Gera o símbolo, entrega ao PDA, registra a tentativa e só então altera o mundo. */
@@ -99,25 +108,45 @@ class Game {
   }
 
   collectPlank(item) {                         // a → empilha B
-    return this.perform("a", "Tábua coletada! O PDA leu a e empilhou B. Leve a madeira até a ponte.", () => { item.collected = true; Sound.play("collect"); });
+    return this.perform("a", "Tábua guardada. Leve a madeira até a ponte.", () => { item.collected = true; Sound.play("collect"); });
   }
   useBridge(force) {                           // b → desempilha B (force: o roteiro envia b mesmo com a ponte pronta)
     if (this.bridgeOpen && !force) { this.hooks.message("A ponte já está pronta. Atravesse e procure as chaves!", "info"); return null; }
     return this.perform("b", () => this.bridgeOpen
-      ? "Última tábua encaixada! A pilha voltou a Z: o PDA está em q3 e a ponte está concluída."
-      : "Tábua encaixada. O PDA leu b e desempilhou B.", () => { this.boards++; Sound.play("place"); });
+      ? "Ponte pronta! Procure o recado do avô na entrada do pomar."
+      : "Tábua encaixada. Ainda há madeira na mochila.", () => { this.boards++; Sound.play("place"); });
   }
   collectKey(item) {                           // c → empilha K (só faz sentido após a ponte)
-    return this.perform("c", "Chave coletada! O PDA leu c e empilhou K. Leve as chaves até o portão do moinho.", () => { item.collected = true; Sound.play("collect"); });
+    return this.perform("c", "Chave guardada. O portão fica perto do moinho.", () => { item.collected = true; Sound.play("collect"); });
   }
   useGate(force) {                             // d → desempilha K
     if (this.gateOpen && !force) { this.hooks.message("O portão já está aberto. Entre no moinho!", "info"); return null; }
     return this.perform("d", () => this.gateOpen
-      ? "Última chave usada! A pilha voltou a Z: o PDA está em q6 e o portão está aberto."
-      : "Chave usada. O PDA leu d e desempilhou K.", () => { this.usedKeys++; Sound.play("place"); });
+      ? "O portão abriu. Entre no moinho!"
+      : "Uma fechadura abriu. Use as chaves restantes.", () => { this.usedKeys++; Sound.play("place"); });
   }
-  enterMill() {                                // e → só aceito com o portão aberto (q6)
-    return this.perform("e", "Sequência aceita! O PDA alcançou q7. O moinho volta a girar…", r => { if (r.view.accepted) this.finish(); });
+  enterMill() {
+    if (!this.gateOpen) return;
+    this.insideMill = true;
+    this.player.x = MILL_EXIT.x - this.player.w / 2;
+    this.player.y = MILL_EXIT.y - 36;
+    this.player.face = "up";
+    this.sync("As engrenagens estão paradas. Procure a alavanca no fundo do moinho.");
+  }
+
+  leaveMill() {
+    this.insideMill = false;
+    this.player.x = MILL_ENTRY.x - this.player.w / 2;
+    this.player.y = MILL_ENTRY.y - this.player.h / 2;
+    this.player.face = "down";
+    this.sync("Você voltou ao pátio.");
+  }
+
+  pullLever() {                                // e → só aceito com o portão aberto (q6)
+    const lastSymbol = !this.script || this.script.i === this.script.queue.length - 1;
+    return this.perform("e", lastSymbol ? "As engrenagens despertaram. O moinho volta a girar…" : "O roteiro ainda tem ações.", r => {
+      if (r.view.accepted && lastSymbol) this.finish();
+    });
   }
 
   finish() {
@@ -166,7 +195,7 @@ class Game {
     if (ch === "b") return bridgeW;
     if (ch === "c") return this.bridgeOpen ? item(this.keys, "chaves") : bridgeW;
     if (ch === "d") return this.bridgeOpen ? gateP : bridgeW;
-    return this.gateOpen ? { x: 856, y: 262 } : this.bridgeOpen ? gateP : bridgeW;     // e
+    return this.gateOpen ? { x: MILL_ENTRY.x - 11, y: MILL_ENTRY.y - 13 } : this.bridgeOpen ? gateP : bridgeW;
   }
 
   updateScript(dt) {
@@ -180,6 +209,11 @@ class Game {
         this.sync(reason, "bad");
         S.cb.symbol(S.i, ch, { ok: false, reason, steps: [], view: this.session.view() });
         return this.endScript({ rejectedAt: S.i, reason, unknown: true });
+      }
+      if (this.session.view().accepted) {
+        const r = this.perform(ch, "");
+        S.cb.symbol(S.i, ch, r);
+        return this.endScript({ rejectedAt: S.i, reason: r.reason });
       }
       const target = this.scriptTarget(ch);
       if (target.limit) { this.sync(target.reason, "bad"); return this.endScript({ limit: true, reason: target.reason }); }
@@ -205,8 +239,14 @@ class Game {
     }
     if (S.mode === "act") {
       const ch = S.queue[S.i], it = S.target.item;
+      if (ch === "e" && this.gateOpen && !this.insideMill) {
+        this.enterMill();
+        S.route = [{ x: this.player.x, y: MILL_LEVER.y + 24 }];
+        S.mode = "walk";
+        return;
+      }
       const r = ch === "a" ? this.collectPlank(it) : ch === "b" ? this.useBridge(true)
-        : ch === "c" ? (it ? this.collectKey(it) : this.perform("c", "")) : ch === "d" ? this.useGate(true) : this.enterMill();
+        : ch === "c" ? (it ? this.collectKey(it) : this.perform("c", "")) : ch === "d" ? this.useGate(true) : this.pullLever();
       S.cb.symbol(S.i, ch, r);
       if (!r.ok) return this.endScript({ rejectedAt: S.i, reason: r.reason });
       S.i++;
@@ -226,17 +266,23 @@ class Game {
     if (this.phase === "ended") this.finishT = 1;
   }
 
+  landscapeState() {
+    return { ...this.mapState(), planks: this.planks, keys: this.keys, letterRead: this.letterRead,
+      finishT: this.finishT, finished: this.phase === "finishing" || this.phase === "ended" };
+  }
+
   render(t) {
-    const world = { planks: this.planks, keys: this.keys, boards: this.boards, bridgeOpen: this.bridgeOpen, gateOpen: this.gateOpen,
-      letterRead: this.letterRead, finishT: this.finishT, finished: this.phase === "finishing" || this.phase === "ended" };
-    const c = this.c; this.map.draw(c, world, t);
+    const world = this.landscapeState();
+    const c = this.c;
+    if (this.insideMill) this.map.drawMillRoom(c, world.finished, t);
+    else this.map.draw(c, world, t);
     const n = this.nearest();
     if (n && this.phase === "playing") {      // destaque + dica da tecla E
       c.strokeStyle = "#fff5b4"; c.lineWidth = 2; c.setLineDash([4, 4]); c.beginPath(); c.arc(n.at.x, n.at.y, 26, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
       c.fillStyle = "#fffdf0"; c.fillRect(n.at.x - 9, n.at.y - 50, 18, 18); c.fillStyle = "#34483a"; c.font = "bold 12px monospace"; c.fillText("E", n.at.x - 4, n.at.y - 37);
     }
     this.player.draw(c);
-    this.map.drawWeather(c, world, t);
+    if (!this.insideMill) this.map.drawWeather(c, world, t);
   }
 
   loop(t) {
@@ -252,10 +298,10 @@ class Game {
     let act = 1, obj = "Encontre a carta do seu avô";
     if (this.letterRead) {
       if (!this.bridgeOpen) { act = 2; obj = this.boards > 0 ? "Termine de reconstruir a ponte" : v.boards > 0 ? "Leve as tábuas até a ponte" : "Colete tábuas no bosque"; }
-      else if (!this.gateOpen) { act = 3; obj = this.usedKeys > 0 ? "Termine de abrir o portão" : v.keys > 0 ? "Leve as chaves até o portão do moinho" : "Atravesse a ponte e colete chaves"; }
-      else { act = 3; obj = "Entre no moinho"; }
+      else if (!this.gateOpen) { act = 3; obj = this.usedKeys > 0 ? "Termine de abrir o portão" : v.keys > 0 ? "Leve as chaves até o portão do moinho" : "Procure chaves no pomar"; }
+      else { act = 3; obj = this.insideMill ? "Acione a alavanca" : "Entre no moinho"; }
     }
-    this.hooks.hud({ area: areaAt(this.player.cx).name, objective: `Ato ${act} · ${obj}`, nearby: n ? `E · ${n.label}` : "Explore a propriedade" });
+    this.hooks.hud({ area: this.insideMill ? "Interior do moinho" : areaAt(this.player.cx, this.player.cy), objective: `Ato ${act} · ${obj}`, nearby: n ? `E · ${n.label}` : "Explore a propriedade" });
   }
 
   sync(message, tone = "info") {

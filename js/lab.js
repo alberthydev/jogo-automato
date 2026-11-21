@@ -21,7 +21,6 @@ function initLab(onState, game) {
     const list = $("traceList"), out = $("manualResult");
     list.innerHTML = ""; out.className = "manual-result"; out.textContent = "Executando na tela do jogo…";
     $("labStatus").textContent = "executando"; renderMonitor("q0", "—", ["Z"], seq, 0, false);
-    $("introOverlay").classList.add("hidden");
     $("gameCanvas").scrollIntoView({ behavior: "smooth", block: "nearest" });
     const verdict = (accepted, text) => { out.className = "manual-result " + (accepted ? "accepted" : "rejected");
       out.textContent = (accepted ? "ACEITA — " : "REJEITADA — ") + text; $("labStatus").textContent = accepted ? "aceita" : "rejeitada"; };

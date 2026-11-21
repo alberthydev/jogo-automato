@@ -1,3 +1,0 @@
-Coloque aqui os sons (mp3, ogg ou wav) e depois preencha o nome do arquivo em js/audio.js (tabela SOUND_FILES).
-Eventos: click, collect (coletar tábua), place (encaixar tábua), reject (ação negada), win (final), music (trilha em loop).
-Evento sem arquivo usa um "bip" sintetizado, então o jogo nunca fica mudo por engano.

@@ -152,7 +152,7 @@ class PDASession {
 // ---------------------------------------------------------------------------
 // Definição concreta: L = { aⁿ bⁿ cᵐ dᵐ e | n > 0, m > 0 }
 //   a: coletar tábua (empilha B)   b: usar tábua na ponte (desempilha B)
-//   c: coletar chave (empilha K)   d: usar chave no portão (desempilha K)   e: entrar no moinho
+//   c: coletar chave (empilha K)   d: usar chave no portão (desempilha K)   e: acionar a alavanca
 // ---------------------------------------------------------------------------
 const T = (from, read, pop, to, push, note) => ({ from, read, pop, to, push, note });
 
@@ -178,7 +178,7 @@ const COLHEITA = new PDA({
     T("q4", "",  "K", "q5", "K",  "ε: encerra a coleta de chaves e começa a abrir o portão (há ao menos um K)."),
     T("q5", "d", "K", "q5", "",   "d: usou uma chave no portão e desempilhou K."),
     T("q5", "",  "Z", "q6", "Z",  "ε: todas as chaves foram usadas; o portão está aberto."),
-    T("q6", "e", "Z", "q7", "Z",  "e: entrou no moinho e alcançou o estado final q7.")
+    T("q6", "e", "Z", "q7", "Z",  "e: acionou a alavanca e alcançou o estado final q7.")
   ],
   acceptMessage: "Entrada consumida por completo: o PDA alcançou q7 (estado final) com apenas Z na pilha.",
 
@@ -199,8 +199,8 @@ const COLHEITA = new PDA({
         : "Há mais d do que c: todas as chaves coletadas já foram usadas, o topo da pilha é Z e não existe K para desempilhar.";
       case "e": return hasK ? "O portão ainda não está aberto: restam chaves (K) na pilha, então o PDA não pode ir para q6 nem ler e."
         : hasB ? "A ponte ainda não foi concluída: restam tábuas (B) na pilha, então o PDA não pode ler e."
-        : bridge ? "É preciso coletar e usar ao menos uma chave (m > 0) para abrir o portão antes de entrar no moinho."
-        : "É preciso concluir a ponte (n > 0) e abrir o portão (m > 0) antes de entrar no moinho.";
+        : bridge ? "É preciso coletar e usar ao menos uma chave (m > 0) para abrir o portão antes de acionar a alavanca."
+        : "É preciso concluir a ponte (n > 0) e abrir o portão (m > 0) antes de acionar a alavanca.";
       default: return `Não existe transição para ${symbol} neste estado.`;
     }
   },
@@ -208,8 +208,8 @@ const COLHEITA = new PDA({
     if (!prefix) return "A sequência vazia não pertence à linguagem: é preciso n > 0 tábuas, m > 0 chaves e o e final.";
     if (configs.some(c => c.stack.includes("B"))) return "A entrada terminou com tábuas (B) ainda na pilha: faltam b para usá-las, as chaves e o e final.";
     if (configs.some(c => c.stack.includes("K"))) return "A entrada terminou com chaves (K) ainda na pilha: faltam d para usá-las e o e final.";
-    if (configs.some(c => c.state === "q6")) return "A entrada terminou antes do e: o portão está aberto (q6), mas o PDA ainda precisa entrar no moinho.";
-    return "A entrada terminou antes de coletar e usar chaves: o PDA está em q3 (ponte concluída) e ainda precisa abrir o portão e entrar no moinho.";
+    if (configs.some(c => c.state === "q6")) return "A entrada terminou antes do e: o portão está aberto (q6), mas o PDA ainda precisa acionar a alavanca.";
+    return "A entrada terminou antes de coletar e usar chaves: o PDA está em q3 (ponte concluída) e ainda precisa abrir o portão e acionar a alavanca.";
   }
 });
 

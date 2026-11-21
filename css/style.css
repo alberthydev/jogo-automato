@@ -90,3 +90,133 @@ body[data-mode="sequence"] .manual-panel{order:-1}
 .jflap-fig figcaption{font:10px 'DM Mono';color:#879083;margin-top:4px}
 #pdaDiagram .edge{fill:none;stroke:#5d6b5e;stroke-width:1.6;marker-end:url(#arr)}
 #pdaDiagram text.elabel{font:500 11px 'DM Mono';fill:#4d5e50;text-anchor:middle}
+
+/* A fazenda como cenário do menu e foco da partida. */
+body {
+  --soil: #3b291f;
+  --bark: #69432f;
+  --honey: #e7ad5b;
+  --parchment: #fbedd1;
+  background: #30251e;
+}
+
+#screenMenu { position: relative; isolation: isolate; overflow: hidden; }
+#titleLandscape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: -2;
+}
+
+#screenMenu::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, #271a15c9, #291e164d), linear-gradient(0deg, #20170dc2, transparent 55%);
+  z-index: -1;
+}
+
+.menu-screen:not(#screenMenu) {
+  background: radial-gradient(ellipse at top, #68462d, #30251e 75%);
+}
+
+.menu-card, .story-card {
+  background: var(--parchment);
+  border: 3px solid #ae7648;
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px var(--soil), inset 0 0 0 2px #fff7e5, 0 16px 32px #24140955;
+}
+
+.title-card { width: min(490px, 100%); }
+.title-card h1 {
+  font-size: clamp(38px, 7vw, 76px);
+  color: #483324;
+  line-height: .94;
+}
+.title-card h1 span { display: block; color: #7e442a; }
+.title-card .menu-lead { max-width: 29ch; color: #5a4936; margin-top: 18px; }
+.title-card .menu-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.title-card .button-primary { grid-column: 1 / -1; font-size: 17px; }
+
+.button { border-radius: 5px; }
+.button-primary { background: #36513a; box-shadow: inset 0 -3px #263b2a; }
+.button-quiet { background: #e8d2aa; color: #493825; }
+:where(button, summary, a):focus-visible { outline: 3px solid #d88e37; outline-offset: 3px; }
+
+.app-shell { max-width: 1272px; padding-top: 18px; }
+.topbar { margin-bottom: 10px; gap: 12px; }
+.topbar h1 { color: var(--parchment); font-size: clamp(22px, 3vw, 34px); }
+.top-actions { flex-wrap: wrap; justify-content: end; }
+
+.game-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+body[data-mode="play"] .game-layout { max-width: 960px; margin-inline: auto; }
+.scene-heading {
+  height: auto;
+  min-height: 39px;
+  gap: 10px;
+  padding: 7px 12px;
+  background: var(--soil);
+  color: var(--parchment);
+  border: 1px solid #93613c;
+  border-radius: 6px 6px 0 0;
+}
+.scene-heading > span { color: #ffca84; text-align: right; }
+.canvas-wrap {
+  border: 5px solid var(--bark);
+  border-radius: 0 0 7px 7px;
+  box-shadow: 0 6px 20px #1f140d80;
+}
+.overlay { overflow-y: auto; }
+.story-card { margin: 4px auto; }
+.controls-row { color: var(--parchment); }
+.nearby-hint { color: #ffca84; font-weight: 700; }
+
+.inventory-row, .message-box {
+  background: #efe0bf;
+  border: 1px solid #ae7648;
+  border-radius: 5px;
+  padding: 10px 12px;
+}
+.inventory-row { margin-bottom: 8px; flex-wrap: wrap; }
+.inventory-row .section-label { color: #5a432c; }
+.inv-row { flex-wrap: wrap; }
+.inv-slot { background: #ddc5a1; border-color: #a27c52; }
+.inv-slot.full { background: #ac733d; box-shadow: inset 0 -3px #7c4b2b; }
+.inv-slot.key.full { background: #e3b94e; }
+
+.field-journal { min-width: 0; }
+.field-journal > summary {
+  padding: 12px 14px;
+  border: 1px solid #ae7648;
+  border-radius: 5px;
+  background: var(--soil);
+  color: var(--parchment);
+  cursor: pointer;
+  font-weight: 700;
+}
+.field-journal[open] > summary { margin-bottom: 10px; }
+.field-journal .panel { background: #fff5df; }
+.field-journal .diagram-panel { margin-top: 12px; }
+.side-column { grid-template-columns: minmax(0, 1fr); }
+.pda-panel { grid-row: auto; }
+
+@media (min-width: 1050px) {
+  body[data-mode="sequence"] .game-layout { grid-template-columns: minmax(0, 1.8fr) minmax(340px, 1fr); }
+  body[data-mode="play"] .side-column { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .top-actions .button { padding: 8px 9px; }
+  .title-card .menu-actions .button { padding-inline: 8px; }
+  .title-card .menu-actions { grid-template-columns: minmax(0, 1fr); }
+  .overlay { position: relative; padding: 12px; }
+  .overlay .story-card { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button { transition: none; }
+  .button:hover { transform: none; }
+}

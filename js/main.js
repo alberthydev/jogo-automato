@@ -51,6 +51,8 @@ const hooks = {
 };
 
 const game = new Game($("gameCanvas"), hooks, $("inventory"));
+const titleLandscape = $("titleLandscape");
+game.map.draw(titleLandscape.getContext("2d"), game.landscapeState(), 0);
 window.__game = game; // útil para depuração no console
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
@@ -59,11 +61,11 @@ function showScreen(id) {
 }
 function startMode(mode) {                 // mode: "play" | "sequence"
   document.body.dataset.mode = mode; game.setMode(mode);
+  $("fieldJournal").open = mode === "sequence";
   showScreen("screenGame");
-  if (mode === "play") { game.reset(false); $("introOverlay").classList.remove("hidden"); }
-  else { $("introOverlay").classList.add("hidden"); game.enterIdle(); $("manualInput").focus(); }
+  if (mode === "play") game.reset(true);
+  else { game.enterIdle(); $("manualInput").focus(); }
 }
-$("menuStart").addEventListener("click", () => showScreen("screenMode"));
 $("menuSettings").addEventListener("click", () => showScreen("screenSettings"));
 $("menuHelp").addEventListener("click", () => $("helpDialog").showModal());
 $("modePlay").addEventListener("click", () => startMode("play"));
@@ -91,7 +93,6 @@ buildSettings();
 $("soundTest").addEventListener("click", () => Sound.play("collect"));
 $("settingsReset").addEventListener("click", () => { Settings.reset(); buildSettings(); });
 
-$("startButton").addEventListener("click", () => { $("introOverlay").classList.add("hidden"); game.start(); });
 $("restartButton").addEventListener("click", () => { game.reset(true); });
 $("menuButton").addEventListener("click", () => game.backToMenu());
 $("letterClose").addEventListener("click", () => game.interact());

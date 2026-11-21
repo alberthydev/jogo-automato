@@ -5,7 +5,7 @@ class Controls {
     window.addEventListener("keydown", e => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return; // não captura o campo de roteiro
       const k = e.key.toLowerCase();
-      if (["w", "a", "s", "d", "e", "r", " "].includes(k)) e.preventDefault();
+      if (["w", "a", "s", "d", "e", "r"].includes(k)) e.preventDefault();
       this.keys.add(k);
       if (e.repeat) return;                       // segurar a tecla não repete a ação
       if (k === "e") onInteract();
@@ -19,7 +19,7 @@ class Controls {
 
 class Player {
   constructor() { this.reset(); }
-  reset() { this.x = 120; this.y = 296; this.w = 22; this.h = 26; this.speed = 3.1; this.face = "down"; this.step = 0; }
+  reset() { this.x = 176; this.y = 268; this.w = 22; this.h = 26; this.speed = 3.1; this.face = "down"; this.step = 0; }
 
   hitbox(x = this.x, y = this.y) { return { x: x + 2, y: y + 12, w: 18, h: 14 }; }   // “pés” do personagem
   get cx() { return this.x + this.w / 2; }

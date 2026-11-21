@@ -12,9 +12,10 @@ const HOUSE = { x: 70, y: 95 }, MILL = { x: 808, y: 96 };
 
 const AREAS = [
   { id: "fazenda", name: "A Fazenda", from: 0 }, { id: "bosque", name: "O Bosque", from: 330 },
-  { id: "ponte", name: "A Ponte", from: 668 }, { id: "moinho", name: "O Moinho", from: 790 }
+  { id: "ponte", name: "A Ponte", from: 668 }, { id: "pomar", name: "O Pomar", from: 768 }
 ];
-const areaAt = x => [...AREAS].reverse().find(a => x >= a.from);
+const areaAt = (x, y) => x >= 804 && y < 292 ? "Pátio do moinho"
+  : [...AREAS].reverse().find(a => x >= a.from).name;
 
 const SPOTS = {                               // pontos de interação
   letter: { x: 215, y: 244, label: "Carta do avô", range: 58 },
@@ -22,9 +23,17 @@ const SPOTS = {                               // pontos de interação
   gate:   { x: 868, y: 298, label: "Portão do moinho", range: 56 },
   mill:   { x: 867, y: 268, label: "Entrada do moinho", range: 50 }
 };
-const KEY_SPOTS = [{ x: 822, y: 332 }, { x: 900, y: 340 }, { x: 930, y: 400 }];   // chaves na margem leste
+const KEY_SPOTS = [{ x: 817, y: 377 }, { x: 871, y: 459 }, { x: 925, y: 523 }];   // chaves nas trilhas do pomar
 const GATE_RECT = { x: 846, y: 284, w: 44, h: 8 };                                // portão (bloqueia até abrir)
-const PLANK_SPOTS = [{ x: 430, y: 170 }, { x: 520, y: 410 }, { x: 585, y: 222 }];
+const PLANK_SPOTS = [{ x: 585, y: 222 }, { x: 430, y: 170 }, { x: 520, y: 465 }];
+const FLOOD_POOLS = [{ x: 360, y: 370, w: 134, h: 35 }, { x: 550, y: 370, w: 111, h: 42 }];
+const ORCHARD_TREES = [[790, 402], [844, 402], [898, 402], [790, 493], [844, 493], [898, 493]];
+const MILL_ROOM = { x: 236, y: 104, w: 488, h: 440 };
+const MILL_ENTRY = { x: 867, y: 267 };
+const ORCHARD_NOTE = { x: 801, y: 348, range: 43, label: "Ler recado do pomar" };
+const MILL_LEVER = { x: 480, y: 226, range: 62, label: "Acionar alavanca" };
+const MILL_EXIT = { x: 480, y: 517, range: 54, label: "Sair do moinho" };
+const MILL_CRATES = [{ x: 273, y: 333, w: 104, h: 53 }, { x: 582, y: 292, w: 103, h: 54 }];
 
 const rectsOverlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
@@ -37,7 +46,10 @@ class FarmMap {
       { x: 45, y: 420, w: 155, h: 8 }, { x: 232, y: 420, w: 48, h: 8 }, // cerca da horta (com abertura)
       { x: 796, y: 60, w: 8, h: 232 }, { x: 796, y: 60, w: 156, h: 8 },  // cerca do pátio do moinho
       { x: 796, y: 284, w: 50, h: 8 }, { x: 890, y: 284, w: 62, h: 8 },  // (a entrada é o portão, entre as duas)
-      ...TREES.map(([x, y]) => ({ x: x - 16, y: y + 10, w: 34, h: 32 }))
+      { x: 946, y: 60, w: 8, h: 232 },
+      ...FLOOD_POOLS,
+      ...TREES.map(([x, y]) => ({ x: x - 16, y: y + 10, w: 34, h: 32 })),
+      ...ORCHARD_TREES.map(([x, y]) => ({ x: x - 12, y: y + 10, w: 24, h: 32 }))
     ];
   }
 
@@ -56,6 +68,11 @@ class FarmMap {
 
   /** O retângulo (hitbox do jogador) bate em algo? `w` = { bridgeOpen, gateOpen, boards }, derivado do PDA. */
   isBlocked(r, w) {
+    if (w.insideMill) {
+      const { x, y, w: width, h } = MILL_ROOM;
+      return r.x < x || r.y < y || r.x + r.w > x + width || r.y + r.h > y + h
+        || MILL_CRATES.some(crate => rectsOverlap(r, crate));
+    }
     if (r.x < 8 || r.y < 8 || r.x + r.w > W - 8 || r.y + r.h > H - 8) return true;
     if (this.solids.some(s => rectsOverlap(r, s))) return true;
     if (!w.gateOpen && rectsOverlap(r, GATE_RECT)) return true;
@@ -83,13 +100,65 @@ class FarmMap {
     this.drawFence(c);
     this.drawYard(c, gateOpen);
     this.drawCrops(c, 45, 440, 235, 150, finishT);
-    this.drawCrops(c, 790, 400, 150, 190, finishT);
+    this.drawWoodland(c);
+    this.drawOrchard(c);
+    this.drawMailbox(c, ORCHARD_NOTE.x, ORCHARD_NOTE.y - 13, true);
     TREES.forEach(([x, y]) => this.drawTree(c, x, y));
     planks.forEach(p => { if (!p.collected) this.drawPlank(c, p.x, p.y); });
     keys.forEach(k => { if (!k.collected) this.drawKey(c, k.x, k.y); });
     this.drawBridge(c, boards, bridgeOpen);
     this.drawMill(c, MILL.x, MILL.y, finished || finishT > 0, t);
-    this.sign(c, "FAZENDA", 52, 40); this.sign(c, "BOSQUE", 440, 40); this.sign(c, "PONTE", 692, 396); this.sign(c, "MOINHO", 825, 40);
+    this.sign(c, "FAZENDA", 52, 40); this.sign(c, "BOSQUE ALAGADO", 440, 40); this.sign(c, "PONTE", 692, 396); this.sign(c, "MOINHO", 825, 40); this.sign(c, "POMAR", 796, 603);
+  }
+
+  drawWoodland(c) {
+    for (const { x, y, w, h } of FLOOD_POOLS) {
+      c.fillStyle = "#527b69"; c.fillRect(x - 4, y - 4, w + 8, h + 8);
+      c.fillStyle = "#598f92"; c.fillRect(x, y, w, h);
+      c.fillStyle = "#9ac7ab"; c.fillRect(x + 12, y + 8, w / 3, 3);
+      c.fillRect(x + w / 2, y + h - 12, w / 3, 3);
+    }
+  }
+
+  drawOrchard(c) {
+    c.fillStyle = "#b3a567"; c.fillRect(774, 360, 178, 216);
+    c.fillStyle = "#d0bd81";
+    for (const x of [808, 862, 916]) c.fillRect(x, 360, 21, 216);
+    for (const [x, y] of ORCHARD_TREES) {
+      this.drawTree(c, x, y);
+      c.fillStyle = "#e18659"; c.fillRect(x - 10, y + 2, 7, 7);
+      c.fillRect(x + 8, y + 13, 7, 7);
+    }
+  }
+
+  drawMillRoom(c, running, t) {
+    const { x, y, w, h } = MILL_ROOM;
+    c.fillStyle = "#251e22"; c.fillRect(0, 0, W, H);
+    c.fillStyle = "#4d3328"; c.fillRect(x - 16, y - 32, w + 32, h + 48);
+    for (let row = 0; row < h / 20; row++) {
+      c.fillStyle = row % 2 ? "#a47149" : "#b58355";
+      c.fillRect(x, y + row * 20, w, 19);
+    }
+    c.fillStyle = "#71482e"; c.fillRect(391, 119, 178, 73);
+    for (const [cx, cy, radius, direction] of [[442, 155, 32, 1], [502, 155, 25, -1]]) {
+      c.save(); c.translate(cx, cy); c.rotate(running ? direction * t / 220 : 0);
+      c.fillStyle = "#e2b46d";
+      for (let tooth = 0; tooth < 8; tooth++) {
+        c.fillRect(-7, radius - 6, 14, 13); c.rotate(Math.PI / 4);
+      }
+      c.beginPath(); c.arc(0, 0, radius, 0, 2 * Math.PI); c.fill();
+      c.fillStyle = "#784c2c"; c.fillRect(-8, -8, 16, 16); c.restore();
+    }
+    for (const crate of MILL_CRATES) {
+      c.fillStyle = "#69432f"; c.fillRect(crate.x, crate.y, crate.w, crate.h);
+      c.fillStyle = "#bb884e"; c.fillRect(crate.x + 5, crate.y + 5, crate.w - 10, crate.h - 10);
+      c.fillStyle = "#8a572e"; c.fillRect(crate.x + 5, crate.y + 21, crate.w - 10, 8);
+    }
+    c.fillStyle = "#4f3429"; c.fillRect(456, 217, 48, 30);
+    c.fillStyle = running ? "#9fbd71" : "#df855c";
+    c.fillRect(running ? 485 : 468, 222, 10, 20);
+    c.fillStyle = "#61412f"; c.fillRect(452, 509, 56, 35);
+    this.sign(c, "SAÍDA", 462, 537);
   }
 
   drawRiver(c, t) {
@@ -142,7 +211,7 @@ class FarmMap {
   }
   drawYard(c, open) {                // cerca do pátio + portão
     c.fillStyle = "#725638";
-    c.fillRect(796, 60, 8, 232); c.fillRect(796, 60, 156, 8); c.fillRect(796, 284, 50, 8); c.fillRect(890, 284, 62, 8);
+    c.fillRect(796, 60, 8, 232); c.fillRect(946, 60, 8, 232); c.fillRect(796, 60, 156, 8); c.fillRect(796, 284, 50, 8); c.fillRect(890, 284, 62, 8);
     for (let y = 70; y < 284; y += 24) { c.fillStyle = "#8b6a44"; c.fillRect(794, y, 12, 5); }
     for (let x = 806; x < 950; x += 24) { c.fillStyle = "#8b6a44"; c.fillRect(x, 58, 5, 12); }
     if (!open) {                     // portão fechado com cadeado
